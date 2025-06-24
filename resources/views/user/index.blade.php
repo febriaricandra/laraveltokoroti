@@ -353,17 +353,17 @@
                                 </div>
                             </div>
                         </div>
-                        <p class="text-gray-600 italic">"Croissant di sini adalah yang terbaik di kota! Lembut di
+                        <p class="text-gray-600 italic">"Cake Tape di sini adalah yang terbaik di kota! Lembut di
                             dalam, renyah di luar. Sempurna untuk memulai hari dengan secangkir kopi."</p>
                     </div>
                 </div>
 
-                <div class="text-center mt-12">
+                {{-- <div class="text-center mt-12">
                     <a href="{{ route('user.contact') }}"
                         class="inline-block bg-[#F26725] text-white font-semibold py-3 px-8 rounded-lg hover:bg-orange-600 transition duration-300 ease-in-out shadow-md">
                         Berikan Review Anda
                     </a>
-                </div>
+                </div> --}}
             </div>
         </section>
 
