@@ -7,7 +7,6 @@
     <title>Menu - Toko Roti</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
-    {{-- Swiper tidak digunakan di halaman ini, jadi bisa dihapus jika mau --}}
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/swiper/swiper-bundle.min.css" />
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
     <script src="https://cdn.jsdelivr.net/npm/swiper/swiper-bundle.min.js"></script>
@@ -99,31 +98,49 @@
                                 alt="{{ $product->name }}" class="w-full h-full object-cover">
                         </div>
                         <div class="p-5 flex flex-col flex-grow">
-                            {{-- <p class="text-sm text-orange-500 font-semibold">{{ $product->category->name }}</p> --}}
-                            <h3 class="text-xl font-bold text-gray-800 mt-1">{{ $product->name }}</h3>
+                            <div class="flex justify-between items-start">
+                                <h3 class="text-xl font-bold text-gray-800">{{ $product->name }}</h3>
+                                <span class="text-sm text-orange-500 font-medium px-2 py-1 bg-orange-100 rounded-full">{{ $product->category->name }}</span>
+                            </div>
                             <p class="text-gray-600 text-sm mt-2 flex-grow">{{ $product->description }}</p>
 
-                            <div class="mt-4 pt-4 border-t border-gray-200 flex justify-between items-center">
-                                <p class="text-lg font-extrabold text-[#F26725] flex items-baseline">
-                                    Rp{{ number_format($product->price, 0, ',', '.') }}
-                                    @if ($product->unit)
-                                        <span
-                                            class="ml-2 text-sm font-medium text-gray-500">/{{ $product->unit }}</span>
-                                    @endif
-                                </p>
-                                <form class="add-to-cart-form">
-                                    @csrf
-                                    <input type="hidden" name="product_id" value="{{ $product->id }}">
-                                    <button type="submit"
-                                        class="w-10 h-10 flex items-center justify-center bg-orange-500 text-white rounded-full hover:bg-orange-600 transition-colors duration-300 focus:outline-none focus:ring-2 focus:ring-orange-500 focus:ring-offset-2">
-                                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none"
-                                            viewBox="0 0 24 24" stroke="currentColor">
-                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                                d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4z" />
-                                        </svg>
-                                    </button>
-                                </form>
-                            </div>
+                            <form class="add-to-cart-form mt-4 pt-4 border-t border-gray-200">
+                                @csrf
+                                <input type="hidden" name="product_id" value="{{ $product->id }}">
+
+                                @if($product->sizes && $product->sizes->where('is_active', true)->count() > 0)
+                                    <div class="mb-3">
+                                        <label class="block text-sm font-medium text-gray-700 mb-1">Pilih Ukuran:</label>
+                                        <select name="product_size_id" class="w-full p-2 border border-gray-300 rounded-md text-sm">
+                                            @foreach($product->sizes->where('is_active', true) as $size)
+                                                <option value="{{ $size->id }}" data-price="{{ $size->price }}">
+                                                    {{ $size->size }} - Rp{{ number_format($size->price, 0, ',', '.') }}
+                                                </option>
+                                            @endforeach
+                                        </select>
+                                    </div>
+                                    
+                                    <div class="flex items-center justify-between mt-3">
+                                        <div class="flex items-center">
+                                            <button type="button" class="quantity-btn minus bg-gray-200 px-2 py-1 rounded-l-md">-</button>
+                                            <input type="number" name="quantity" value="1" min="1" class="quantity-input w-12 p-1 text-center border-t border-b border-gray-300">
+                                            <button type="button" class="quantity-btn plus bg-gray-200 px-2 py-1 rounded-r-md">+</button>
+                                        </div>
+                                        
+                                        <button type="submit"
+                                            class="bg-orange-500 text-white py-2 px-4 rounded-md hover:bg-orange-600 transition-colors duration-300 flex items-center">
+                                            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-1" fill="none"
+                                                viewBox="0 0 24 24" stroke="currentColor">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                                    d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4z" />
+                                            </svg>
+                                            Tambahkan
+                                        </button>
+                                    </div>
+                                @else
+                                    <p class="text-red-500 text-sm italic">Maaf, produk tidak tersedia</p>
+                                @endif
+                            </form>
                         </div>
                     </div>
                 @endforeach
@@ -160,6 +177,20 @@
                     }
                 });
             }
+            
+            // Quantity buttons
+            document.querySelectorAll('.quantity-btn').forEach(button => {
+                button.addEventListener('click', function() {
+                    const input = this.parentNode.querySelector('.quantity-input');
+                    const currentValue = parseInt(input.value);
+                    
+                    if (this.classList.contains('plus')) {
+                        input.value = currentValue + 1;
+                    } else if (this.classList.contains('minus') && currentValue > 1) {
+                        input.value = currentValue - 1;
+                    }
+                });
+            });
         });
     </script>
 

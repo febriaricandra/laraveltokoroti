@@ -7,6 +7,7 @@ use App\Models\Cart;
 use App\Models\Order;
 use App\Models\OrderDetail;
 use App\Models\Discount;
+use App\Models\ProductSize;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use App\Http\Controllers\InvoiceController;
@@ -21,17 +22,30 @@ class UserCartController extends Controller
         if (!Auth::check()) {
             return response()->json(['message' => 'Silakan login untuk menambahkan ke keranjang.'], 401);
         }
+        
+        // Validate the required fields
+        $request->validate([
+            'product_id' => 'required|exists:products,id',
+            'product_size_id' => 'required|exists:product_sizes,id',
+            'quantity' => 'required|integer|min:1',
+        ]);
+
+        // Check if this exact product and size combination exists in cart
         $cartItem = Cart::where('user_id', Auth::id())
             ->where('product_id', $request->product_id)
+            ->where('product_size_id', $request->product_size_id)
             ->first();
 
         if ($cartItem) {
-            $cartItem->increment('quantity');
+            // If exists, increment quantity by the requested amount
+            $cartItem->increment('quantity', $request->quantity);
         } else {
+            // If not, create new cart item with the specified quantity
             Cart::create([
                 'user_id' => Auth::id(),
                 'product_id' => $request->product_id,
-                'quantity' => 1,
+                'product_size_id' => $request->product_size_id,
+                'quantity' => $request->quantity,
             ]);
         }
 
@@ -40,10 +54,17 @@ class UserCartController extends Controller
 
     public function index()
     {
-        $cartItems = Cart::where('user_id', Auth::id())->with('product')->get();
+        // Load cart items with product and size relationships
+        $cartItems = Cart::where('user_id', Auth::id())
+            ->with(['product', 'size'])
+            ->get();
+        
         $subtotalAmount = 0;
+        
         foreach ($cartItems as $item) {
-            $subtotalAmount += $item->product->price * $item->quantity;
+            // Get price from productSize instead of product
+            $price = $item->size ? $item->size->price : 0;
+            $subtotalAmount += $price * $item->quantity;
         }
 
         $activeDiscounts = Discount::where('is_active', true)
@@ -68,9 +89,16 @@ class UserCartController extends Controller
 
         return view('user.cart', compact('cartItems', 'subtotalAmount', 'appliedDiscount', 'discountAmount', 'finalTotal', 'discountPercentageApplied'));
     }
+    
     public function update(Request $request, $id)
     {
         $cartItem = Cart::findOrFail($id);
+        
+        // Make sure the cart item belongs to the current user
+        if ($cartItem->user_id != Auth::id()) {
+            return redirect()->route('cart.index')->with('error', 'Anda tidak memiliki akses untuk mengubah item ini.');
+        }
+        
         $cartItem->quantity = $request->input('quantity');
         $cartItem->save();
 
@@ -87,11 +115,13 @@ class UserCartController extends Controller
 
         return redirect()->route('cart.index')->with('error', 'Produk tidak ditemukan.');
     }
+    
     public function checkout(Request $request)
     {
         $validationRules = [
             'name' => 'required|string|max:255',
             'address' => 'required|string',
+            'phone' => 'required|string|max:15', // Added phone validation
             'payment_method' => 'required|in:cash,transfer',
         ];
 
@@ -102,7 +132,9 @@ class UserCartController extends Controller
         $request->validate($validationRules);
 
         $user = Auth::user();
-        $cartItems = Cart::where('user_id', $user->id)->with('product')->get();
+        $cartItems = Cart::where('user_id', $user->id)
+            ->with(['product', 'size'])
+            ->get();
 
         if ($cartItems->isEmpty()) {
             return redirect()->route('cart.index')->with('error', 'Keranjang kamu kosong!');
@@ -110,7 +142,9 @@ class UserCartController extends Controller
 
         $subtotalAmount = 0;
         foreach ($cartItems as $item) {
-            $subtotalAmount += $item->product->price * $item->quantity;
+            // Get price from size instead of product
+            $price = $item->size ? $item->size->price : 0;
+            $subtotalAmount += $price * $item->quantity;
         }
 
         $activeDiscounts = Discount::where('is_active', true)
@@ -122,6 +156,7 @@ class UserCartController extends Controller
         $discountAmount = 0;
         $finalTotal = $subtotalAmount;
         $discountPercentageApplied = 0;
+        
         foreach ($activeDiscounts as $discount) {
             if ($subtotalAmount >= $discount->minimum_order) {
                 $appliedDiscount = $discount;
@@ -131,7 +166,6 @@ class UserCartController extends Controller
                 break;
             }
         }
-
 
         DB::beginTransaction();
 
@@ -145,21 +179,27 @@ class UserCartController extends Controller
                 'user_id' => $user->id,
                 'name' => $request->name,
                 'address' => $request->address,
+                'phone' => $request->phone, // Added phone field
                 'payment_proof' => $proofPath,
                 'payment_method' => $request->payment_method,
-                'status' => 'pending',
-
+                'status' => $request->payment_method === 'transfer' ? 'paid' : 'pending',
                 'discount_percentage' => $discountPercentageApplied,
                 'total_discount' => $discountAmount,
                 'total_price' => $finalTotal,
             ]);
 
             foreach ($cartItems as $item) {
+                // Get size details for order history
+                $size = $item->productSize;
+                $sizeName = $size ? $size->size : null;
+                $price = $size ? $size->price : 0;
+                
                 OrderDetail::create([
                     'order_id' => $order->id,
                     'product_id' => $item->product_id,
+                    'product_size_id' => $item->product_size_id,
                     'quantity' => $item->quantity,
-                    'price' => $item->product->price,
+                    'price' => $price, // Use the price from product size
                 ]);
             }
 

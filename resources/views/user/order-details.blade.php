@@ -86,7 +86,20 @@
         <div class="bg-white shadow-md rounded-lg p-6 mb-6">
             <p><strong>Nama Pemesan:</strong> {{ $order->name }}</p>
             <p><strong>Alamat:</strong> {{ $order->address }}</p>
-            <p><strong>Status:</strong> {{ $order->status }}</p>
+            <p><strong>No. Telepon:</strong> {{ $order->phone }}</p>
+            <p><strong>Status:</strong> 
+                <span class="
+                    @if($order->status == 'pending') text-yellow-600 font-semibold
+                    @elseif($order->status == 'processing') text-blue-600 font-semibold
+                    @elseif($order->status == 'shipped') text-orange-600 font-semibold
+                    @elseif($order->status == 'delivered') text-green-600 font-semibold
+                    @elseif($order->status == 'cancelled') text-red-600 font-semibold
+                    @elseif($order->status == 'paid') text-green-600 font-semibold
+                    @endif
+                ">
+                    {{ ucfirst($order->status) }}
+                </span>
+            </p>
             <p><strong>Metode Pembayaran:</strong> {{ ucfirst($order->payment_method) }}</p>
             <p><strong>Tanggal Order:</strong> {{ $order->created_at->format('d M Y H:i') }}</p>
             <p><strong>Bukti Pembayaran:</strong>
@@ -106,6 +119,7 @@
                 <thead class="bg-orange-200">
                     <tr>
                         <th class="text-left px-6 py-3">Produk</th>
+                        <th class="text-left px-6 py-3">Ukuran</th>
                         <th class="text-left px-6 py-3">Harga</th>
                         <th class="text-left px-6 py-3">Jumlah</th>
                         <th class="text-left px-6 py-3">Subtotal Item</th>
@@ -117,14 +131,32 @@
                     @endphp
                     @foreach ($order->orderDetails as $item)
                         @php
-                            $itemSubtotal = $item->price * $item->quantity;
+                            $itemSubtotal = $item->size->price * $item->quantity;
                             $overallOriginalSubtotal += $itemSubtotal;
+                            
+                            // Get size information
+                            $sizeName = "Standard";
+                            if ($item->product_size_id) {
+                                $productSize = \App\Models\ProductSize::find($item->product_size_id);
+                                if ($productSize) {
+                                    $sizeName = $productSize->size;
+                                }
+                            }
                         @endphp
                         <tr class="border-b hover:bg-orange-50">
-                            <td class="px-6 py-4 capitalize">{{ $item->product->name }}</td>
-                            <td class="px-6 py-4">Rp{{ number_format($item->price, 0, ',', '.') }}</td>
-                            <td class="px-6 py-4">{{ $item->quantity }}</td>
                             <td class="px-6 py-4">
+                                <div class="flex items-center">
+                                    <img src="{{ $item->product->image ? asset('storage/' . $item->product->image) : 'https://placehold.co/600x400/F26725/FFFFFF?text=Roti' }}" 
+                                         class="w-12 h-12 object-cover rounded mr-3">
+                                    <span class="font-medium">{{ $item->product->name }}</span>
+                                </div>
+                            </td>
+                            <td class="px-6 py-4">
+                                <span class="text-orange-600 font-medium">{{ $sizeName }}</span>
+                            </td>
+                            <td class="px-6 py-4">Rp{{ number_format($item->size->price, 0, ',', '.') }}</td>
+                            <td class="px-6 py-4">{{ $item->quantity }}</td>
+                            <td class="px-6 py-4 font-semibold">
                                 Rp{{ number_format($itemSubtotal, 0, ',', '.') }}
                             </td>
                         </tr>
@@ -133,24 +165,33 @@
             </table>
         </div>
 
-        <div class="mt-6 text-right">
-            <p class="text-xl font-semibold text-gray-700">Subtotal Awal:
-                Rp{{ number_format($overallOriginalSubtotal, 0, ',', '.') }}</p>
+        <div class="mt-6 bg-white p-4 rounded-lg shadow-md">
+            <div class="flex justify-between items-center mb-2">
+                <span class="text-xl text-gray-700">Subtotal Awal:</span>
+                <span class="text-xl font-semibold text-gray-700">Rp{{ number_format($overallOriginalSubtotal, 0, ',', '.') }}</span>
+            </div>
+            
             @if ($order->total_discount > 0)
-                <p class="text-lg font-semibold text-green-600">Diskon ({{ $order->discount_percentage * 100 }}%): -
-                    Rp{{ number_format($order->total_discount, 0, ',', '.') }}</p>
+                <div class="flex justify-between items-center mb-2">
+                    <span class="text-lg text-green-600">Diskon ({{ $order->discount_percentage * 100 }}%):</span>
+                    <span class="text-lg font-semibold text-green-600">- Rp{{ number_format($order->total_discount, 0, ',', '.') }}</span>
+                </div>
             @endif
-            <p class="text-2xl font-extrabold text-orange-700">Total Akhir:
-                Rp{{ number_format($order->total_price, 0, ',', '.') }}</p>
+            
+            <div class="flex justify-between items-center pt-2 border-t border-gray-200 mt-2">
+                <span class="text-2xl font-bold text-orange-700">Total Akhir:</span>
+                <span class="text-2xl font-extrabold text-orange-700">Rp{{ number_format($order->total_price, 0, ',', '.') }}</span>
+            </div>
         </div>
-        <div class="mt-6">
+        
+        <div class="mt-6 flex flex-wrap gap-2">
             <a href="{{ route('user.order') }}"
-                class="bg-gray-500 hover:bg-gray-600 text-white px-4 py-2 rounded-lg text-sm">Kembali ke Daftar
-                Order</a>
+                class="bg-gray-500 hover:bg-gray-600 text-white px-4 py-2 rounded-lg text-sm">
+                <i class="fas fa-arrow-left mr-1"></i> Kembali ke Daftar Order
+            </a>
             <a href="{{ route('user.order.invoice', $order->id) }}"
-                class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg text-sm ml-2" target="_blank">
-                <i class="fas fa-download"></i>
-                Unduh Invoice PDF
+                class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg text-sm" target="_blank">
+                <i class="fas fa-download mr-1"></i> Unduh Invoice PDF
             </a>
         </div>
     </div>
@@ -159,6 +200,36 @@
     <footer class="bg-orange-500 text-white text-center p-4">
         <p>&copy; 2025 Toko Roti. All Rights Reserved.</p>
     </footer>
+
+    <script>
+        document.addEventListener("DOMContentLoaded", function() {
+            const menuButton = document.getElementById("menuButton");
+            const navMenu = document.getElementById("navMenu");
+            const userMenuButton = document.getElementById("userMenuButton");
+            const userDropdown = document.getElementById("userDropdown");
+
+            // Toggle menu saat tombol hamburger diklik
+            if (menuButton) {
+                menuButton.addEventListener("click", function() {
+                    navMenu.classList.toggle("hidden");
+                });
+            }
+
+            // Toggle dropdown user
+            if (userMenuButton) {
+                userMenuButton.addEventListener("click", function(event) {
+                    event.stopPropagation();
+                    userDropdown.classList.toggle("hidden");
+                });
+
+                document.addEventListener("click", function(event) {
+                    if (!userMenuButton.contains(event.target) && !userDropdown.contains(event.target)) {
+                        userDropdown.classList.add("hidden");
+                    }
+                });
+            }
+        });
+    </script>
 </body>
 
 </html>

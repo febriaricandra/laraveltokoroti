@@ -117,9 +117,9 @@
                     @foreach ($order->orderDetails as $item)
                         <tr>
                             <td>{{ $item->product->name }}</td>
-                            <td>Rp{{ number_format($item->price, 0, ',', '.') }}</td>
+                            <td>Rp{{ number_format($item->size->price, 0, ',', '.') }}</td>
                             <td>{{ $item->quantity }}</td>
-                            <td>Rp{{ number_format($item->price * $item->quantity, 0, ',', '.') }}</td>
+                            <td>Rp{{ number_format($item->size->price * $item->quantity, 0, ',', '.') }}</td>
                         </tr>
                     @endforeach
                 </tbody>

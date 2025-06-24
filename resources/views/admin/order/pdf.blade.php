@@ -107,7 +107,7 @@
                     <td class="nowrap">
                         Rp{{ number_format(
                             $order->orderDetails->sum(function ($item) {
-                                return $item->price * $item->quantity;
+                                return $item->size->price * $item->quantity;
                             }),
                             2,
                             ',',
@@ -141,10 +141,10 @@
                                 @foreach ($order->orderDetails as $detail)
                                     <tr>
                                         <td>{{ $detail->product->name }}</td>
-                                        <td class="nowrap">Rp{{ number_format($detail->price, 2, ',', '.') }}</td>
+                                        <td class="nowrap">Rp{{ number_format($detail->size->price, 2, ',', '.') }}</td>
                                         <td class="nowrap">{{ $detail->quantity }}</td>
                                         <td class="nowrap">
-                                            Rp{{ number_format($detail->price * $detail->quantity, 2, ',', '.') }}</td>
+                                            Rp{{ number_format($detail->size->price * $detail->quantity, 2, ',', '.') }}</td>
                                     </tr>
                                 @endforeach
                             </tbody>

@@ -113,7 +113,7 @@
                                 <td class="px-6 py-4">
                                     @php
                                         $originalSubtotal = $order->orderDetails->sum(
-                                            fn($item) => $item->price * $item->quantity,
+                                            fn($item) => $item->size->price * $item->quantity,
                                         );
                                     @endphp
                                     Rp{{ number_format($originalSubtotal, 0, ',', '.') }}

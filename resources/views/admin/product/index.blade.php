@@ -40,7 +40,21 @@
                                     <td class="px-4 py-2 border">{{ $product->name }}</td>
                                     <td class="px-4 py-2 border">{{ $product->category->name }}</td>
                                     <td class="px-4 py-2 border text-right">
-                                        Rp{{ number_format($product->price, 0, ',', '.') }} / {{ $product->unit }}</td>
+                                        @if($product->sizes && $product->sizes->count() > 0)
+                                            <div class="space-y-1">
+                                                @foreach($product->sizes as $size)
+                                                    @if($size->is_active)
+                                                        <div class="flex justify-between">
+                                                            <span class="font-medium">{{ $size->size }}</span>
+                                                            <span>Rp{{ number_format($size->price, 0, ',', '.') }}</span>
+                                                        </div>
+                                                    @endif
+                                                @endforeach
+                                            </div>
+                                        @else
+                                            <span class="text-gray-500">-</span>
+                                        @endif
+                                        <div class="text-xs text-gray-500 mt-1">Per {{ $product->unit }}</div>
                                     </td>
                                     <td class="px-4 py-2 border">
                                         <img src="{{ $product->image ? asset('storage/' . $product->image) : 'https://placehold.co/600x400?text=Cake' }}"

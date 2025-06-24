@@ -4,7 +4,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Produk Roti</title>
+    <title>Keranjang Belanja - Toko Roti</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/swiper/swiper-bundle.min.css" />
@@ -85,9 +85,11 @@
             const userDropdown = document.getElementById("userDropdown");
 
             // Toggle menu saat tombol hamburger diklik
-            menuButton.addEventListener("click", function() {
-                navMenu.classList.toggle("hidden");
-            });
+            if (menuButton) {
+                menuButton.addEventListener("click", function() {
+                    navMenu.classList.toggle("hidden");
+                });
+            }
 
             // Toggle dropdown user
             if (userMenuButton) {
@@ -117,7 +119,15 @@
         @endif
 
         @if ($cartItems->isEmpty())
-            <p class="text-center text-gray-500">Keranjang belanja masih kosong.</p>
+            <div class="bg-white shadow-lg rounded-lg p-12 text-center">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-16 w-16 mx-auto text-orange-500 mb-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z" />
+                </svg>
+                <p class="text-gray-500 text-lg">Keranjang belanja masih kosong.</p>
+                <a href="{{ route('user.menu') }}" class="inline-block mt-4 px-6 py-2 bg-orange-500 text-white rounded-lg hover:bg-orange-600 transition-colors">
+                    Lihat Menu
+                </a>
+            </div>
         @else
             <div class="bg-white shadow-lg rounded-lg p-6 overflow-x-auto">
                 <table class="w-full min-w-[600px]">
@@ -133,34 +143,47 @@
                     <tbody>
 
                         @foreach ($cartItems as $item)
-                            @php $subtotal = $item->product->price * $item->quantity; @endphp
+                            @php 
+                                // Get price from size, not from product
+                                $price = $item->size ? $item->size->price : 0;
+                                $subtotal = $price * $item->quantity; 
+                            @endphp
 
                             <tr class="border-b flex flex-col sm:table-row">
                                 <td class="p-3 flex items-center space-x-3">
-                                    <img src="{{ asset('storage/' . $item->product->image) }}"
-                                        class="w-16 h-16 rounded">
+                                    <img src="{{ $item->product->image ? asset('storage/' . $item->product->image) : 'https://placehold.co/600x400/F26725/FFFFFF?text=Roti' }}"
+                                        class="w-16 h-16 rounded object-cover">
                                     <div>
                                         <span class="font-semibold">{{ $item->product->name }}</span>
+                                        @if ($item->size)
+                                            <p class="text-sm text-orange-500">Ukuran: {{ $item->size->size }}</p>
+                                        @endif
                                         @if ($item->product->unit)
                                             <p class="text-xs text-gray-500">Unit: {{ $item->product->unit }}</p>
                                         @endif
                                         <p class="sm:hidden text-gray-600">
-                                            Rp{{ number_format($item->product->price, 0, ',', '.') }}</p>
+                                            Rp{{ number_format($price, 0, ',', '.') }}</p>
                                         <p class="sm:hidden font-bold">Subtotal:
                                             Rp{{ number_format($subtotal, 0, ',', '.') }}</p>
                                     </div>
                                 </td>
                                 <td class="p-3 hidden sm:table-cell">
-                                    Rp{{ number_format($item->product->price, 0, ',', '.') }}</td>
+                                    Rp{{ number_format($price, 0, ',', '.') }}</td>
                                 <td class="p-3">
                                     <form action="{{ route('cart.update', $item->id) }}" method="POST"
                                         class="flex items-center space-x-2">
                                         @csrf
                                         @method('PUT')
+                                        <button type="button" onclick="decrementQuantity(this)" class="text-gray-700 hover:text-orange-500 bg-gray-100 w-8 h-8 rounded-full flex items-center justify-center">
+                                            <i class="fas fa-minus text-sm"></i>
+                                        </button>
                                         <input type="number" name="quantity" value="{{ $item->quantity }}"
-                                            min="1" class="w-16 p-1 border rounded text-center">
-                                        <button type="submit" class="text-blue-500 hover:text-blue-700">
-                                            <i class="fas fa-sync-alt text-xl"></i>
+                                            min="1" class="w-14 p-1 border rounded text-center" readonly>
+                                        <button type="button" onclick="incrementQuantity(this)" class="text-gray-700 hover:text-orange-500 bg-gray-100 w-8 h-8 rounded-full flex items-center justify-center">
+                                            <i class="fas fa-plus text-sm"></i>
+                                        </button>
+                                        <button type="submit" class="text-blue-500 hover:text-blue-700 ml-2">
+                                            <i class="fas fa-sync-alt"></i>
                                         </button>
                                     </form>
                                 </td>
@@ -173,7 +196,6 @@
                                         @method('DELETE')
                                         <button type="submit" class="text-red-500 hover:text-red-700">
                                             <i class="fas fa-trash-alt text-xl"></i>
-                                        </button>
                                         </button>
                                     </form>
                                 </td>
@@ -199,7 +221,6 @@
                     @else
                         <div class="mb-2 text-gray-500 text-sm">
                             @php
-
                                 $nextDiscount = \App\Models\Discount::where('is_active', true)
                                     ->where('minimum_order', '>', $subtotalAmount)
                                     ->orderBy('minimum_order', 'asc')
@@ -232,7 +253,7 @@
 
                     <div>
                         <label for="name" class="block font-semibold text-gray-700">Nama Lengkap</label>
-                        <input type="text" name="name" id="name" required
+                        <input type="text" name="name" id="name" value="{{ Auth::user()->name ?? '' }}" required
                             class="w-full mt-1 p-2 border border-gray-300 rounded focus:outline-none focus:ring focus:border-orange-500">
                     </div>
 
@@ -240,6 +261,13 @@
                         <label for="address" class="block font-semibold text-gray-700">Alamat Pengiriman</label>
                         <textarea name="address" id="address" rows="3" required
                             class="w-full mt-1 p-2 border border-gray-300 rounded focus:outline-none focus:ring focus:border-orange-500"></textarea>
+                    </div>
+                    
+                    <div>
+                        <label for="phone" class="block font-semibold text-gray-700">No. Telepon</label>
+                        <input type="text" name="phone" id="phone" required
+                            class="w-full mt-1 p-2 border border-gray-300 rounded focus:outline-none focus:ring focus:border-orange-500" 
+                            placeholder="contoh: 08123456789">
                     </div>
 
                     <div>
@@ -317,6 +345,20 @@
                 paymentProofSection.style.display = 'block';
                 paymentProofInput.setAttribute('required', 'required');
             }
+        }
+        
+        function decrementQuantity(button) {
+            const input = button.nextElementSibling;
+            const currentValue = parseInt(input.value);
+            if (currentValue > 1) {
+                input.value = currentValue - 1;
+            }
+        }
+        
+        function incrementQuantity(button) {
+            const input = button.previousElementSibling;
+            const currentValue = parseInt(input.value);
+            input.value = currentValue + 1;
         }
 
         document.addEventListener('DOMContentLoaded', function() {

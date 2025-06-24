@@ -17,7 +17,7 @@ class InvoiceController extends Controller
 
         $overallOriginalSubtotal = 0;
         foreach ($order->orderDetails as $item) {
-            $overallOriginalSubtotal += $item->price * $item->quantity;
+            $overallOriginalSubtotal += $item->size->price * $item->quantity;
         }
 
         $data = [

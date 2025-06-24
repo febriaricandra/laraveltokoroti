@@ -46,7 +46,7 @@
                                     <td class="px-4 py-2 border">
                                         Rp{{ number_format(
                                             $order->orderDetails->sum(function ($item) {
-                                                return $item->price * $item->quantity;
+                                                return $item->size->price * $item->quantity;
                                             }),
                                             2,
                                             ',',

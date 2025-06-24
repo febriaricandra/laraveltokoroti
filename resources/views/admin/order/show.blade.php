@@ -33,10 +33,10 @@
                                 <tr class="border-b hover:bg-gray-100">
                                     <td class="px-4 py-2 border">{{ $loop->iteration }}</td>
                                     <td class="px-4 py-2 border">{{ $detail->product->name }}</td>
-                                    <td class="px-4 py-2 border">Rp{{ number_format($detail->price, 2, ',', '.') }}</td>
+                                    <td class="px-4 py-2 border">Rp{{ number_format($detail->size->price, 2, ',', '.') }}</td>
                                     <td class="px-4 py-2 border">{{ $detail->quantity }}</td>
                                     <td class="px-4 py-2 border">
-                                        Rp{{ number_format($detail->quantity * $detail->price, 2, ',', '.') }}</td>
+                                        Rp{{ number_format($detail->quantity * $detail->size->price, 2, ',', '.') }}</td>
                                 </tr>
                             @endforeach
                         </tbody>
