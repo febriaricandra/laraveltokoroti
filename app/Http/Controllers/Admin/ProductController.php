@@ -23,8 +23,7 @@ class ProductController extends Controller
     {
         $categories = Category::all();
         $units = UnitHelper::getUnits();
-        $sizes = ['Small', 'Medium', 'Large'];
-        return view('admin.product.create', compact('categories', 'units', 'sizes'));
+        return view('admin.product.create', compact('categories', 'units'));
     }
 
     public function store(Request $request)
@@ -33,12 +32,12 @@ class ProductController extends Controller
             'name' => 'required|string|max:255',
             'category_id' => 'required|integer|exists:categories,id',
             'description' => 'nullable|string',
-            'unit' => 'required|string|in:' . implode(',', UnitHelper::getUnits()),
             'image' => 'nullable|image|mimes:jpeg,png,jpg,gif|max:2048',
             'sizes' => 'required|array|min:1',
             'sizes.*.size' => 'required|string',
             'sizes.*.price' => 'required|numeric|min:0',
             'sizes.*.is_active' => 'sometimes|boolean',
+            'sizes.*.unit' => 'sometimes|string|in:' . implode(',', UnitHelper::getUnits()),
         ]);
 
         DB::beginTransaction();
@@ -47,7 +46,6 @@ class ProductController extends Controller
                 'name' => $validated['name'],
                 'category_id' => $validated['category_id'],
                 'description' => $validated['description'] ?? null,
-                'unit' => $validated['unit'],
             ];
 
             if ($request->hasFile('image')) {
@@ -62,6 +60,7 @@ class ProductController extends Controller
                     'size' => $sizeData['size'],
                     'price' => $sizeData['price'],
                     'is_active' => $sizeData['is_active'] ?? true,
+                    'unit' => $sizeData['unit'],
                 ]);
             }
 
@@ -88,13 +87,14 @@ class ProductController extends Controller
             'name' => 'required|string|max:255',
             'category_id' => 'required|integer|exists:categories,id',
             'description' => 'nullable|string',
-            'unit' => 'required|string|in:' . implode(',', UnitHelper::getUnits()),
+            // 'unit' => 'required|string|in:' . implode(',', UnitHelper::getUnits()),
             'image' => 'nullable|image|mimes:jpeg,png,jpg,gif|max:2048',
             'sizes' => 'required|array|min:1',
             'sizes.*.id' => 'sometimes|exists:product_sizes,id',
             'sizes.*.size' => 'required|string',
             'sizes.*.price' => 'required|numeric|min:0',
             'sizes.*.is_active' => 'sometimes|boolean',
+            'sizes.*.unit' => 'sometimes|string|in:' . implode(',', UnitHelper::getUnits()),
         ]);
 
         DB::beginTransaction();
@@ -103,7 +103,6 @@ class ProductController extends Controller
                 'name' => $validated['name'],
                 'category_id' => $validated['category_id'],
                 'description' => $validated['description'] ?? null,
-                'unit' => $validated['unit'],
             ];
 
             if ($request->hasFile('image')) {
@@ -127,6 +126,7 @@ class ProductController extends Controller
                         'size' => $sizeData['size'],
                         'price' => $sizeData['price'],
                         'is_active' => $sizeData['is_active'] ?? true,
+                        'unit' => $sizeData['unit'],
                     ]);
                     $updatedSizeIds[] = $size->id;
                 } else {
@@ -135,6 +135,7 @@ class ProductController extends Controller
                         'size' => $sizeData['size'],
                         'price' => $sizeData['price'],
                         'is_active' => $sizeData['is_active'] ?? true,
+                        'unit' => $sizeData['unit'],
                     ]);
                     $updatedSizeIds[] = $size->id;
                 }

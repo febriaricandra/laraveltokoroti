@@ -159,7 +159,7 @@
                                             <p class="text-sm text-orange-500">Ukuran: {{ $item->size->size }}</p>
                                         @endif
                                         @if ($item->product->unit)
-                                            <p class="text-xs text-gray-500">Unit: {{ $item->product->unit }}</p>
+                                            <p class="text-xs text-gray-500">Unit: {{ $item->size->unit }}</p>
                                         @endif
                                         <p class="sm:hidden text-gray-600">
                                             Rp{{ number_format($price, 0, ',', '.') }}</p>

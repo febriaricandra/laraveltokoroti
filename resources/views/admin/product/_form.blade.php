@@ -32,7 +32,7 @@
     </div>
 
     {{-- Satuan --}}
-    <div>
+    {{-- <div>
         <label for="unit" class="block text-gray-700 font-semibold">Satuan</label>
         <select name="unit" id="unit"
             class="w-full p-2 border border-gray-300 rounded-lg" required>
@@ -44,7 +44,7 @@
                 </option>
             @endforeach
         </select>
-    </div>
+    </div> --}}
 
     {{-- Deskripsi --}}
     <div>
@@ -88,6 +88,19 @@
                         <label class="block text-sm font-medium text-gray-700">Harga</label>
                         <input type="number" name="sizes[{{ $i }}][price]" value="{{ $size['price'] ?? '' }}"
                             class="w-full p-2 border border-gray-300 rounded-lg" required>
+                    </div>
+
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700">Satuan</label>
+                        <select name="sizes[{{ $i }}][unit]" class="w-full p-2 border border-gray-300 rounded-lg" required>
+                            <option value="" disabled>Pilih Satuan</option>
+                            @foreach ($units as $unit)
+                                <option value="{{ $unit }}"
+                                    {{ (isset($size['unit']) && $size['unit'] == $unit) ? 'selected' : '' }}>
+                                    {{ $unit }}
+                                </option>
+                            @endforeach
+                        </select>
                     </div>
 
                     <div>
@@ -155,6 +168,18 @@
                 <select name="sizes[${sizeIndex}][is_active]" class="w-full p-2 border border-gray-300 rounded-lg">
                     <option value="1" selected>Ya</option>
                     <option value="0">Tidak</option>
+                </select>
+            </div>
+            <div>
+                <label class="block text-sm font-medium text-gray-700">Satuan</label>
+                <select name="sizes[${sizeIndex}][unit]" class="w-full p-2 border border-gray-300 rounded-lg" required>
+                    <option value="" disabled>Pilih Satuan</option>
+                    @foreach ($units as $unit)
+                        <option value="{{ $unit }}"
+                            {{ (isset($size['unit']) && $size['unit'] == $unit) ? 'selected' : '' }}>
+                            {{ $unit }}
+                        </option>
+                    @endforeach
                 </select>
             </div>
             <div class="text-right">
