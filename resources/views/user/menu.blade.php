@@ -212,7 +212,6 @@
                     },
                     error: function(xhr) {
                         if (xhr.status === 401) {
-                            alert("Silahkan Login terlebih dahulu.");
                             window.location.href = "{{ route('login') }}";
                         } else {
                             // Tampilkan pesan error dari server jika ada

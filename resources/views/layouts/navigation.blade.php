@@ -36,6 +36,15 @@
                     <x-nav-link :href="route('admin.banners.index')" :active="request()->routeIs('admin.banners.*')" class="text-white hover:text-orange-100">
                         {{ __('Banner') }}
                     </x-nav-link>
+                    
+                    <x-nav-link :href="route('admin.notifications.index')" :active="request()->routeIs('admin.notifications.*')" class="text-white hover:text-orange-100">
+                        {{ __('Notification') }}
+                        @if (Auth::user()->unreadNotifications->count() > 0)
+                            <span class="bg-red-600 text-white rounded-full px-2 py-1 text-xs">
+                                {{ Auth::user()->unreadNotifications->count() }}
+                            </span>
+                        @endif
+                    </x-nav-link>
                 </div>
             </div>
 

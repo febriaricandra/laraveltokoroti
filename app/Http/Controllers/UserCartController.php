@@ -7,12 +7,16 @@ use App\Models\Cart;
 use App\Models\Order;
 use App\Models\OrderDetail;
 use App\Models\Discount;
+use App\Models\User;
 use App\Models\ProductSize;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use App\Http\Controllers\InvoiceController;
 use App\Models\Product;
 use Barryvdh\DomPDF\Facade\Pdf;
+use App\Notifications\NewOrderNotification;
+use Illuminate\Support\Facades\Notification;
+
 
 
 class UserCartController extends Controller
@@ -22,7 +26,7 @@ class UserCartController extends Controller
         if (!Auth::check()) {
             return response()->json(['message' => 'Silakan login untuk menambahkan ke keranjang.'], 401);
         }
-        
+
         // Validate the required fields
         $request->validate([
             'product_id' => 'required|exists:products,id',
@@ -58,9 +62,9 @@ class UserCartController extends Controller
         $cartItems = Cart::where('user_id', Auth::id())
             ->with(['product', 'size'])
             ->get();
-        
+
         $subtotalAmount = 0;
-        
+
         foreach ($cartItems as $item) {
             // Get price from productSize instead of product
             $price = $item->size ? $item->size->price : 0;
@@ -89,16 +93,16 @@ class UserCartController extends Controller
 
         return view('user.cart', compact('cartItems', 'subtotalAmount', 'appliedDiscount', 'discountAmount', 'finalTotal', 'discountPercentageApplied'));
     }
-    
+
     public function update(Request $request, $id)
     {
         $cartItem = Cart::findOrFail($id);
-        
+
         // Make sure the cart item belongs to the current user
         if ($cartItem->user_id != Auth::id()) {
             return redirect()->route('cart.index')->with('error', 'Anda tidak memiliki akses untuk mengubah item ini.');
         }
-        
+
         $cartItem->quantity = $request->input('quantity');
         $cartItem->save();
 
@@ -115,7 +119,7 @@ class UserCartController extends Controller
 
         return redirect()->route('cart.index')->with('error', 'Produk tidak ditemukan.');
     }
-    
+
     public function checkout(Request $request)
     {
         $validationRules = [
@@ -156,7 +160,7 @@ class UserCartController extends Controller
         $discountAmount = 0;
         $finalTotal = $subtotalAmount;
         $discountPercentageApplied = 0;
-        
+
         foreach ($activeDiscounts as $discount) {
             if ($subtotalAmount >= $discount->minimum_order) {
                 $appliedDiscount = $discount;
@@ -193,7 +197,7 @@ class UserCartController extends Controller
                 $size = $item->productSize;
                 $sizeName = $size ? $size->size : null;
                 $price = $size ? $size->price : 0;
-                
+
                 OrderDetail::create([
                     'order_id' => $order->id,
                     'product_id' => $item->product_id,
@@ -204,7 +208,8 @@ class UserCartController extends Controller
             }
 
             Cart::where('user_id', $user->id)->delete();
-
+            $admins = User::where('email', 'test@example.com')->get(); 
+            Notification::send($admins, new NewOrderNotification($order));
             DB::commit();
 
             return redirect()->route('user.order.details', $order->id)

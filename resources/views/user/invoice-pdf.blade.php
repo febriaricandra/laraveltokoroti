@@ -7,58 +7,77 @@
     <title>Invoice Order #{{ $order->id }}</title>
     <style>
         /* Basic styling for PDF - keep it simple for compatibility */
+        @page {
+            size: A5;
+            margin: 10mm;
+        }
+        
         body {
             font-family: 'Helvetica', 'Arial', sans-serif;
-            font-size: 12px;
-            line-height: 1.6;
+            font-size: 10px;
+            line-height: 1.4;
             color: #333;
+            margin: 0;
+            padding: 0;
         }
 
         .container {
             width: 100%;
             margin: 0 auto;
-            padding: 20px;
+            padding: 10px;
         }
 
         h1,
         h2,
         h3 {
             color: #E53E3E;
-            /* A shade of orange/red */
+            margin: 5px 0;
         }
 
-        .header,
+        .header {
+            text-align: center;
+            margin-bottom: 15px;
+        }
+
+        .logo {
+            width: 60px;
+            height: 60px;
+            margin: 0 auto 10px;
+            display: block;
+        }
+
         .footer {
             text-align: center;
-            margin-bottom: 20px;
+            margin-top: 15px;
+            font-size: 8px;
         }
 
         .invoice-details,
         .order-summary {
-            margin-bottom: 20px;
+            margin-bottom: 15px;
             border: 1px solid #eee;
-            padding: 15px;
-            border-radius: 5px;
+            padding: 10px;
+            border-radius: 3px;
         }
 
         table {
             width: 100%;
             border-collapse: collapse;
-            margin-bottom: 20px;
+            margin-bottom: 10px;
+            font-size: 9px;
         }
 
         table th,
         table td {
             border: 1px solid #ddd;
-            padding: 8px;
+            padding: 4px;
             text-align: left;
         }
 
         table th {
             background-color: #FEEBCF;
-            /* Light orange */
             color: #8B4513;
-            /* Darker orange */
+            font-size: 8px;
         }
 
         .text-right {
@@ -80,12 +99,22 @@
         .text-green-600 {
             color: #38A169;
         }
+
+        h3 {
+            font-size: 12px;
+            margin: 8px 0;
+        }
+
+        p {
+            margin: 3px 0;
+        }
     </style>
 </head>
 
 <body>
     <div class="container">
         <div class="header">
+            <img src="{{ public_path('logo-dinar.jpeg') }}" alt="Dinar Logo" class="logo">
             <h1 class="text-orange-600">INVOICE</h1>
             <p><strong>Order ID:</strong> #{{ $order->id }}</p>
         </div>
@@ -131,7 +160,7 @@
                     <p class="text-green-600 font-bold">Diskon ({{ $order->discount_percentage * 100 }}%): -
                         Rp{{ number_format($order->total_discount, 0, ',', '.') }}</p>
                 @endif
-                <p class="font-bold text-orange-600" style="font-size: 1.3em;">Total Akhir:
+                <p class="font-bold text-orange-600" style="font-size: 1.2em;">Total Akhir:
                     Rp{{ number_format($order->total_price, 0, ',', '.') }}</p>
             </div>
         </div>

@@ -13,6 +13,7 @@ use App\Http\Controllers\Auth\AuthenticatedSessionController;
 use App\Http\Controllers\Admin\DiscountController;
 use App\Http\Controllers\Admin\BannerController;
 use App\Http\Controllers\InvoiceController;
+use App\Http\Controllers\Admin\NotificationController;
 
 // Public routes
 Route::get('/', [UserProductController::class, 'index'])->name('user.products');
@@ -79,6 +80,12 @@ Route::middleware(['auth', 'admin'])->prefix('admin')->name('admin.')->group(fun
 
     Route::resource('discounts', DiscountController::class);
     Route::resource('banners', BannerController::class);
+
+    Route::get('/notifications', [NotificationController::class, 'index'])->name('notifications.index');
+    Route::post('/notifications/{id}/mark-as-read', [NotificationController::class, 'markAsRead'])->name('notifications.mark-as-read');
+    Route::post('/notifications/mark-all-read', [NotificationController::class, 'markAllAsRead'])->name('notifications.mark-all-read');
+    Route::get('/notifications/unread-count', [NotificationController::class, 'getUnreadCount'])->name('notifications.unread-count');
+    Route::get('/notifications/latest', [NotificationController::class, 'getLatestNotifications'])->name('notifications.latest');
 });
 
 // Dashboard route (redirect based on role)
