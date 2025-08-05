@@ -6,7 +6,7 @@ use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
 use App\Models\Order;
 use Illuminate\Support\Facades\Storage;
-use \PDF;
+use Barryvdh\DomPDF\Facade\Pdf;
 
 class OrderController extends Controller
 {
@@ -24,19 +24,25 @@ class OrderController extends Controller
     public function updateStatus(Request $request, Order $order)
     {
         $validated = $request->validate([
-            'status' => 'required|in:pending,confirmed,send,finish',
+            'status' => 'required|in:pending,dp_paid,paid,confirmed,processing,shipped,delivered,completed,cancelled',
+            'tracking_number' => 'nullable|string|max:255'
         ]);
 
-        $order->update([
-            'status' => $validated['status'],
-        ]);
+        $updateData = ['status' => $validated['status']];
+        
+        // If status is shipped and tracking number is provided
+        if ($validated['status'] === 'shipped' && !empty($validated['tracking_number'])) {
+            $updateData['tracking_number'] = $validated['tracking_number'];
+        }
+
+        $order->update($updateData);
 
         return redirect()->route('admin.order.index')->with('success', 'Status order diperbarui.');
     }
     public function printOrderList()
     {
         $orders = Order::with('orderDetails')->get();
-        $pdf = PDF::loadView('admin.order.pdf', compact('orders'));
+        $pdf = Pdf::loadView('admin.order.pdf', compact('orders'));
         return $pdf->download('daftar_order.pdf');
     }
     public function destroy(Order $order)

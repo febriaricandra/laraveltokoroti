@@ -78,6 +78,21 @@
             background-color: #cce5ff;
             color: #004085;
         }
+
+        .dp-info {
+            background-color: #fff3cd;
+            padding: 2px 4px;
+            border-radius: 2px;
+            font-size: 8px;
+        }
+
+        .status-dp-paid {
+            background-color: #d1ecf1;
+            color: #0c5460;
+            padding: 1px 4px;
+            border-radius: 2px;
+            font-size: 8px;
+        }
     </style>
 </head>
 
@@ -93,7 +108,7 @@
                 <th>Total Harga</th>
                 <th>Metode Pembayaran</th>
                 <th>Status</th>
-                {{-- <th>Bukti Pembayaran</th> --}}
+                <th>Down Payment</th>
                 <th>Detail Order</th>
             </tr>
         </thead>
@@ -105,21 +120,30 @@
                     <td>{{ $order->user->name }}</td>
                     <td class="nowrap">{{ $order->orderDetails->sum('quantity') }}</td>
                     <td class="nowrap">
-                        Rp{{ number_format(
-                            $order->orderDetails->sum(function ($item) {
-                                return $item->size->price * $item->quantity;
-                            }),
-                            2,
-                            ',',
-                            '.',
-                        ) }}
+                        Rp{{ number_format($order->total_price, 0, ',', '.') }}
                     </td>
                     <td class="nowrap">
                         <span class="payment-method {{ $order->payment_method === 'cash' ? 'cash' : 'transfer' }}">
                             {{ $order->payment_method === 'cash' ? 'CASH' : 'TRANSFER' }}
                         </span>
                     </td>
-                    <td class="nowrap">{{ ucfirst($order->status) }}</td>
+                    <td class="nowrap">
+                        @if($order->status == 'dp_paid')
+                            DP Paid
+                        @else
+                            {{ ucfirst($order->status) }}
+                        @endif
+                    </td>
+                    <td class="nowrap">
+                        @if($order->is_down_payment)
+                            <div style="font-size: 8px;">
+                                <strong>DP:</strong> Rp{{ number_format($order->down_payment_amount, 0, ',', '.') }}<br>
+                                <strong>Sisa:</strong> Rp{{ number_format($order->remaining_amount, 0, ',', '.') }}
+                            </div>
+                        @else
+                            -
+                        @endif
+                    </td>
                     {{-- <td class="nowrap">
                         @if ($order->payment_proof)
                             Lihat
@@ -153,8 +177,16 @@
                         <!-- Informasi tambahan untuk metode pembayaran -->
                         <div style="margin-top: 5px; font-size: 9px;">
                             <strong>Alamat:</strong> {{ $order->address ?? 'Tidak ada alamat' }}<br>
+                            @if($order->phone)
+                                <strong>No. Telepon:</strong> {{ $order->phone }}<br>
+                            @endif
                             @if($order->payment_method === 'transfer')
-                                <strong>Bukti Transfer:</strong> {{ $order->payment_proof ? 'Tersedia' : 'Tidak ada' }}
+                                <strong>Bukti Transfer:</strong> {{ $order->payment_proof ? 'Tersedia' : 'Tidak ada' }}<br>
+                            @endif
+                            @if($order->is_down_payment)
+                                <strong>Down Payment:</strong> Ya ({{ $order->status == 'dp_paid' ? 'Sudah Dibayar' : 'Belum Dibayar' }})<br>
+                                <strong>DP Amount:</strong> Rp{{ number_format($order->down_payment_amount, 0, ',', '.') }}<br>
+                                <strong>Sisa Pembayaran:</strong> Rp{{ number_format($order->remaining_amount, 0, ',', '.') }}
                             @endif
                         </div>
                     </td>
@@ -165,14 +197,16 @@
 
     <!-- Summary/Footer -->
     <div style="margin-top: 20px; font-size: 10px;">
-        <strong>Ringkasan Metode Pembayaran:</strong><br>
+        <strong>Ringkasan Order:</strong><br>
         @php
             $cashCount = $orders->where('payment_method', 'cash')->count();
             $transferCount = $orders->where('payment_method', 'transfer')->count();
+            $dpCount = $orders->where('is_down_payment', true)->count();
+            $dpPaidCount = $orders->where('status', 'dp_paid')->count();
             $totalOrders = $orders->count();
         @endphp
         
-        <table style="width: 300px; margin-top: 5px;">
+        <table style="width: 400px; margin-top: 5px;">
             <tr>
                 <td>Total Order:</td>
                 <td><strong>{{ $totalOrders }}</strong></td>
@@ -184,6 +218,14 @@
             <tr>
                 <td>Pembayaran Transfer:</td>
                 <td><strong>{{ $transferCount }} order</strong></td>
+            </tr>
+            <tr>
+                <td>Order dengan Down Payment:</td>
+                <td><strong>{{ $dpCount }} order</strong></td>
+            </tr>
+            <tr>
+                <td>DP yang sudah dibayar:</td>
+                <td><strong>{{ $dpPaidCount }} order</strong></td>
             </tr>
         </table>
     </div>

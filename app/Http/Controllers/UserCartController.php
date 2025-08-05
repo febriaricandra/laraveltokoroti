@@ -9,13 +9,16 @@ use App\Models\OrderDetail;
 use App\Models\Discount;
 use App\Models\User;
 use App\Models\ProductSize;
+use App\Models\Setting;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 use App\Http\Controllers\InvoiceController;
 use App\Models\Product;
 use Barryvdh\DomPDF\Facade\Pdf;
 use App\Notifications\NewOrderNotification;
 use Illuminate\Support\Facades\Notification;
+use App\Services\RajaOngkirService;
 
 
 
@@ -91,7 +94,28 @@ class UserCartController extends Controller
             }
         }
 
-        return view('user.cart', compact('cartItems', 'subtotalAmount', 'appliedDiscount', 'discountAmount', 'finalTotal', 'discountPercentageApplied'));
+        // Get RajaOngkir data for shipping calculation
+        try {
+            $rajaOngkirService = new RajaOngkirService();
+            $provinces = $rajaOngkirService->getProvinces();
+            $provincesData = $provinces['data'] ?? [];
+        } catch (\Exception $e) {
+            $provincesData = [];
+            Log::warning('Failed to load provinces for cart: ' . $e->getMessage());
+        }
+
+        $isShippingEnabled = Setting::get('enable_shipping_cost', false);
+
+        return view('user.cart', compact(
+            'cartItems', 
+            'subtotalAmount', 
+            'appliedDiscount', 
+            'discountAmount', 
+            'finalTotal', 
+            'discountPercentageApplied',
+            'provincesData',
+            'isShippingEnabled'
+        ));
     }
 
     public function update(Request $request, $id)
@@ -125,8 +149,15 @@ class UserCartController extends Controller
         $validationRules = [
             'name' => 'required|string|max:255',
             'address' => 'required|string',
-            'phone' => 'required|string|max:15', // Added phone validation
+            'phone' => 'required|string|max:15',
             'payment_method' => 'required|in:cash,transfer',
+            'is_down_payment' => 'nullable|boolean',
+            'customer_province_id' => 'nullable|integer',
+            'customer_city_id' => 'nullable|integer',
+            'shipping_cost' => 'nullable|numeric|min:0',
+            'shipping_courier' => 'nullable|string',
+            'shipping_service' => 'nullable|string',
+            'shipping_weight' => 'nullable|integer|min:1',
         ];
 
         if ($request->payment_method === 'transfer') {
@@ -171,6 +202,21 @@ class UserCartController extends Controller
             }
         }
 
+        // Add shipping cost
+        $shippingCost = $request->shipping_cost ?? 0;
+        $finalTotal += $shippingCost;
+
+        // Handle down payment
+        $isDownPayment = $request->has('is_down_payment') && $request->is_down_payment;
+        $downPaymentAmount = 0;
+        $remainingAmount = 0;
+        
+        if ($isDownPayment) {
+            // Down payment is 50% of total including shipping
+            $downPaymentAmount = $finalTotal * 0.5;
+            $remainingAmount = $finalTotal - $downPaymentAmount;
+        }
+
         DB::beginTransaction();
 
         try {
@@ -179,17 +225,36 @@ class UserCartController extends Controller
                 $proofPath = $request->file('payment_proof')->store('payment_proofs', 'public');
             }
 
+            // Determine order status
+            $orderStatus = 'pending';
+            if ($request->payment_method === 'transfer') {
+                if ($isDownPayment) {
+                    $orderStatus = 'dp_paid'; // Down payment paid
+                } else {
+                    $orderStatus = 'paid'; // Full payment
+                }
+            }
+
             $order = Order::create([
                 'user_id' => $user->id,
                 'name' => $request->name,
                 'address' => $request->address,
-                'phone' => $request->phone, // Added phone field
+                'phone' => $request->phone,
                 'payment_proof' => $proofPath,
                 'payment_method' => $request->payment_method,
-                'status' => $request->payment_method === 'transfer' ? 'paid' : 'pending',
+                'status' => $orderStatus,
                 'discount_percentage' => $discountPercentageApplied,
                 'total_discount' => $discountAmount,
                 'total_price' => $finalTotal,
+                'is_down_payment' => $isDownPayment,
+                'down_payment_amount' => $isDownPayment ? $downPaymentAmount : null,
+                'remaining_amount' => $isDownPayment ? $remainingAmount : null,
+                'customer_province_id' => $request->customer_province_id,
+                'customer_city_id' => $request->customer_city_id,
+                'shipping_cost' => $shippingCost,
+                'shipping_courier' => $request->shipping_courier,
+                'shipping_service' => $request->shipping_service,
+                'shipping_weight' => $request->shipping_weight ?? 1000,
             ]);
 
             foreach ($cartItems as $item) {
@@ -212,14 +277,62 @@ class UserCartController extends Controller
             Notification::send($admins, new NewOrderNotification($order));
             DB::commit();
 
+            $successMessage = 'Checkout berhasil! Pesanan kamu sedang diproses.';
+            if ($isDownPayment) {
+                $successMessage .= ' Kamu telah membayar DP sebesar Rp' . number_format($downPaymentAmount, 0, ',', '.') . 
+                                  '. Sisa pembayaran: Rp' . number_format($remainingAmount, 0, ',', '.');
+            }
+            $successMessage .= ' Invoice Anda akan diunduh secara otomatis.';
+
             return redirect()->route('user.order.details', $order->id)
-                ->with('success', 'Checkout berhasil! Pesanan kamu sedang diproses. Invoice Anda akan diunduh secara otomatis.')
+                ->with('success', $successMessage)
                 ->with('download_invoice', true);
         } catch (\Exception $e) {
             DB::rollBack();
 
-            \Log::error('Checkout failed: ' . $e->getMessage());
+            Log::error('Checkout failed: ' . $e->getMessage());
             return redirect()->route('cart.index')->with('error', 'Checkout gagal. Silakan coba lagi. ' . $e->getMessage());
+        }
+    }
+
+    public function getCities($provinceId)
+    {
+        try {
+            $rajaOngkirService = new RajaOngkirService();
+            $cities = $rajaOngkirService->getCities($provinceId);
+            return response()->json($cities);
+        } catch (\Exception $e) {
+            return response()->json(['error' => $e->getMessage()], 500);
+        }
+    }
+
+    public function getShippingCost(Request $request)
+    {
+        $request->validate([
+            'city_id' => 'required|integer',
+            'weight' => 'required|integer|min:1'
+        ]);
+
+        try {
+            $rajaOngkirService = new RajaOngkirService();
+            
+            // Check if same city (free shipping)
+            if ($rajaOngkirService->isSameCity($request->city_id)) {
+                return response()->json([
+                    'same_city' => true,
+                    'shipping_cost' => 0,
+                    'message' => 'Gratis ongkir - Satu kota dengan toko'
+                ]);
+            }
+
+            $shippingCosts = $rajaOngkirService->calculateShippingCosts($request->city_id, $request->weight);
+            
+            return response()->json([
+                'same_city' => false,
+                'shipping_options' => $shippingCosts
+            ]);
+        } catch (\Exception $e) {
+            return response()->json(['error' => $e->getMessage()], 500);
         }
     }
 }

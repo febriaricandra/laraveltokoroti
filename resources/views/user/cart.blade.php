@@ -4,6 +4,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="csrf-token" content="{{ csrf_token() }}">
     <title>Keranjang Belanja - Toko Roti</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
@@ -239,9 +240,60 @@
                         </div>
                     @endif
 
+                    <!-- Shipping Cost Section -->
+                    @if ($isShippingEnabled)
+                        <div id="shipping_section" class="mb-4 p-4 bg-blue-50 rounded-lg border border-blue-200">
+                            <h4 class="font-semibold text-gray-800 mb-3">Biaya Pengiriman</h4>
+                            
+                            <div class="grid grid-cols-1 md:grid-cols-2 gap-3 mb-3">
+                                <div>
+                                    <label for="shipping_province" class="block text-sm font-medium text-gray-700 mb-1">
+                                        Provinsi Tujuan
+                                    </label>
+                                    <select id="shipping_province" class="w-full border border-gray-300 rounded px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-orange-500">
+                                        <option value="">Pilih Provinsi</option>
+                                        @foreach ($provincesData as $province)
+                                            <option value="{{ $province['id'] }}">{{ $province['name'] }}</option>
+                                        @endforeach
+                                    </select>
+                                </div>
+                                
+                                <div>
+                                    <label for="shipping_city" class="block text-sm font-medium text-gray-700 mb-1">
+                                        Kota/Kabupaten
+                                    </label>
+                                    <select id="shipping_city" class="w-full border border-gray-300 rounded px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-orange-500" disabled>
+                                        <option value="">Pilih Kota/Kabupaten</option>
+                                    </select>
+                                </div>
+                            </div>
+
+                            <div id="shipping_options" class="hidden mt-3">
+                                <h5 class="font-medium text-gray-800 mb-2">Pilih Kurir:</h5>
+                                <div id="shipping_choices" class="space-y-2">
+                                    <!-- Shipping options will be populated here -->
+                                </div>
+                            </div>
+
+                            <div id="shipping_cost_display" class="mt-3 hidden">
+                                <div class="flex justify-between items-center text-orange-600">
+                                    <span class="font-bold">Ongkos Kirim:</span>
+                                    <span id="shipping_cost_amount" class="font-bold">Rp0</span>
+                                </div>
+                            </div>
+
+                            <div id="same_city_message" class="mt-3 hidden">
+                                <div class="flex items-center text-green-600">
+                                    <i class="fas fa-truck mr-2"></i>
+                                    <span class="font-bold">Gratis Ongkir - Satu kota dengan toko!</span>
+                                </div>
+                            </div>
+                        </div>
+                    @endif
+
                     <div class="flex justify-between items-center pt-4 border-t border-gray-200 mt-4">
                         <h3 class="text-xl font-bold text-orange-600">Total Akhir:</h3>
-                        <h3 class="text-2xl font-extrabold text-orange-600">
+                        <h3 id="final_total_display" class="text-2xl font-extrabold text-orange-600">
                             Rp{{ number_format($finalTotal, 0, ',', '.') }}</h3>
                     </div>
                 </div>
@@ -250,6 +302,14 @@
                 <form action="{{ route('cart.checkout') }}" method="POST" enctype="multipart/form-data"
                     class="bg-white rounded-lg p-6 mt-6 shadow-md w-full max-w-xl mx-auto space-y-4">
                     @csrf
+
+                    <!-- Hidden fields for shipping -->
+                    <input type="hidden" name="customer_province_id" id="checkout_province_id">
+                    <input type="hidden" name="customer_city_id" id="checkout_city_id">
+                    <input type="hidden" name="shipping_cost" id="checkout_shipping_cost" value="0">
+                    <input type="hidden" name="shipping_courier" id="checkout_shipping_courier">
+                    <input type="hidden" name="shipping_service" id="checkout_shipping_service">
+                    <input type="hidden" name="shipping_weight" id="checkout_shipping_weight" value="1000">
 
                     <div>
                         <label for="name" class="block font-semibold text-gray-700">Nama Lengkap</label>
@@ -288,6 +348,33 @@
                         </div>
                     </div>
 
+                    <div id="down_payment_section">
+                        <div class="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                            <div class="flex items-center space-x-3">
+                                <input type="checkbox" id="is_down_payment" name="is_down_payment" value="1"
+                                    class="mr-2 text-orange-500 focus:ring-orange-500"
+                                    onchange="toggleDownPayment()">
+                                <label for="is_down_payment" class="text-gray-700 font-semibold">
+                                    Bayar Down Payment (DP) 50%
+                                </label>
+                            </div>
+                            <div id="dp_info" class="mt-2 text-sm text-gray-600 hidden">
+                                <p class="mb-1">
+                                    <span class="font-semibold">DP Amount:</span> 
+                                    <span id="dp_amount">Rp{{ number_format($finalTotal * 0.5, 0, ',', '.') }}</span>
+                                </p>
+                                <p>
+                                    <span class="font-semibold">Sisa Pembayaran:</span> 
+                                    <span id="remaining_amount">Rp{{ number_format($finalTotal * 0.5, 0, ',', '.') }}</span>
+                                </p>
+                                <p class="text-xs text-orange-600 mt-2">
+                                    * Dengan memilih DP, Anda hanya perlu membayar 50% dari total belanja terlebih dahulu. 
+                                    Sisa pembayaran dapat dilakukan saat pengambilan/pengiriman.
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+
                     <div id="payment_proof_section">
                         <label for="payment_proof" class="block font-semibold text-gray-700">Upload Bukti
                             Pembayaran</label>
@@ -297,8 +384,10 @@
                     </div>
 
                     <div class="flex justify-between items-center pt-4 border-t">
-                        <h3 class="text-xl font-bold">Total yang harus dibayar:
-                            Rp{{ number_format($finalTotal, 0, ',', '.') }}</h3>
+                        <h3 class="text-xl font-bold">
+                            <span id="payment_label">Total yang harus dibayar:</span>
+                            <span id="payment_amount" data-total="{{ $finalTotal }}">Rp{{ number_format($finalTotal, 0, ',', '.') }}</span>
+                        </h3>
                         <button type="submit"
                             class="bg-orange-500 text-white px-6 py-2 rounded hover:bg-orange-600 transition duration-200">
                             Checkout
@@ -337,13 +426,42 @@
             const transferRadio = document.getElementById('transfer');
             const paymentProofSection = document.getElementById('payment_proof_section');
             const paymentProofInput = document.getElementById('payment_proof');
+            const downPaymentSection = document.getElementById('down_payment_section');
 
             if (cashRadio.checked) {
                 paymentProofSection.style.display = 'none';
                 paymentProofInput.removeAttribute('required');
+                downPaymentSection.style.display = 'none';
+                
+                // Reset down payment checkbox when cash is selected
+                const dpCheckbox = document.getElementById('is_down_payment');
+                dpCheckbox.checked = false;
+                toggleDownPayment();
             } else if (transferRadio.checked) {
                 paymentProofSection.style.display = 'block';
                 paymentProofInput.setAttribute('required', 'required');
+                downPaymentSection.style.display = 'block';
+            }
+        }
+        
+        function toggleDownPayment() {
+            const dpCheckbox = document.getElementById('is_down_payment');
+            const dpInfo = document.getElementById('dp_info');
+            const paymentLabel = document.getElementById('payment_label');
+            const paymentAmount = document.getElementById('payment_amount');
+            
+            // Ambil nilai dari data attribute yang sudah disiapkan
+            const finalTotal = parseInt(paymentAmount.getAttribute('data-total'));
+            const dpAmount = Math.round(finalTotal * 0.5);
+            
+            if (dpCheckbox.checked) {
+                dpInfo.classList.remove('hidden');
+                paymentLabel.textContent = 'Down Payment yang harus dibayar:';
+                paymentAmount.textContent = 'Rp' + new Intl.NumberFormat('id-ID').format(dpAmount);
+            } else {
+                dpInfo.classList.add('hidden');
+                paymentLabel.textContent = 'Total yang harus dibayar:';
+                paymentAmount.textContent = 'Rp' + new Intl.NumberFormat('id-ID').format(finalTotal);
             }
         }
         
@@ -363,6 +481,207 @@
 
         document.addEventListener('DOMContentLoaded', function() {
             togglePaymentProof();
+            
+            // Shipping functionality
+            const provinceSelect = document.getElementById('shipping_province');
+            const citySelect = document.getElementById('shipping_city');
+            const shippingOptions = document.getElementById('shipping_options');
+            const shippingChoices = document.getElementById('shipping_choices');
+            const shippingCostDisplay = document.getElementById('shipping_cost_display');
+            const shippingCostAmount = document.getElementById('shipping_cost_amount');
+            const sameCityMessage = document.getElementById('same_city_message');
+            const finalTotalDisplay = document.getElementById('final_total_display');
+            
+            let currentShippingCost = 0;
+            const originalTotal = {{ $finalTotal }};
+
+            if (provinceSelect) {
+                provinceSelect.addEventListener('change', function() {
+                    const provinceId = this.value;
+                    citySelect.innerHTML = '<option value="">Pilih Kota/Kabupaten</option>';
+                    citySelect.disabled = !provinceId;
+                    
+                    hideShippingElements();
+                    
+                    if (provinceId) {
+                        loadCities(provinceId);
+                    }
+                });
+
+                citySelect.addEventListener('change', function() {
+                    const cityId = this.value;
+                    
+                    hideShippingElements();
+                    
+                    if (cityId) {
+                        calculateShipping(cityId);
+                        
+                        // Update checkout hidden fields
+                        document.getElementById('checkout_province_id').value = provinceSelect.value;
+                        document.getElementById('checkout_city_id').value = cityId;
+                    }
+                });
+            }
+
+            function loadCities(provinceId) {
+                fetch(`/cart/cities/${provinceId}`)
+                    .then(response => response.json())
+                    .then(data => {
+                        console.log('Cities response:', data); // Debug log
+                        
+                        if (data.data && Array.isArray(data.data)) {
+                            data.data.forEach(city => {
+                                const option = document.createElement('option');
+                                option.value = city.id;
+                                option.textContent = city.name; // Remove type reference
+                                citySelect.appendChild(option);
+                            });
+                        } else {
+                            console.error('Invalid cities data:', data);
+                            alert('Gagal memuat daftar kota. Format data tidak valid.');
+                        }
+                    })
+                    .catch(error => {
+                        console.error('Error loading cities:', error);
+                        alert('Gagal memuat daftar kota.');
+                    });
+            }
+
+            function calculateShipping(cityId) {
+                const weight = 1000; // Default weight 1kg, you can make this dynamic based on products
+                
+                fetch('/cart/shipping-cost', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content')
+                    },
+                    body: JSON.stringify({
+                        city_id: cityId,
+                        weight: weight
+                    })
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.same_city) {
+                        showSameCityMessage();
+                        updateShippingCost(0, '', '');
+                    } else if (data.shipping_options) {
+                        showShippingOptions(data.shipping_options);
+                    }
+                })
+                .catch(error => {
+                    console.error('Error calculating shipping:', error);
+                    alert('Gagal menghitung ongkos kirim.');
+                });
+            }
+
+            function showSameCityMessage() {
+                sameCityMessage.classList.remove('hidden');
+                shippingOptions.classList.add('hidden');
+                shippingCostDisplay.classList.add('hidden');
+            }
+
+            function showShippingOptions(options) {
+                shippingChoices.innerHTML = '';
+                
+                Object.keys(options).forEach(courier => {
+                    const courierOptions = options[courier];
+                    if (courierOptions && courierOptions.length > 0) {
+                        courierOptions.forEach(option => {
+                            const optionDiv = document.createElement('div');
+                            optionDiv.className = 'flex items-center p-3 border border-gray-200 rounded hover:bg-gray-50 cursor-pointer';
+                            
+                            // Handle the new API response structure
+                            const cost = option.cost || 0;
+                            const etd = option.etd || '-';
+                            const service = option.service || '';
+                            const description = option.description || '';
+                            const name = option.name || courier.toUpperCase();
+                            
+                            optionDiv.innerHTML = `
+                                <input type="radio" name="shipping_option" value="${courier}-${service}" 
+                                       data-cost="${cost}" 
+                                       data-courier="${courier.toUpperCase()}" 
+                                       data-service="${service}"
+                                       class="mr-3">
+                                <div class="flex-1">
+                                    <div class="font-medium">${name} - ${service}</div>
+                                    <div class="text-sm text-gray-600">${description}</div>
+                                    <div class="text-sm text-gray-500">Estimasi: ${etd}</div>
+                                </div>
+                                <div class="font-bold text-orange-600">
+                                    Rp${new Intl.NumberFormat('id-ID').format(cost)}
+                                </div>
+                            `;
+                            
+                            optionDiv.addEventListener('click', function() {
+                                const radio = this.querySelector('input[type="radio"]');
+                                radio.checked = true;
+                                
+                                const cost = parseInt(radio.dataset.cost);
+                                const courier = radio.dataset.courier;
+                                const service = radio.dataset.service;
+                                
+                                updateShippingCost(cost, courier, service);
+                            });
+                            
+                            shippingChoices.appendChild(optionDiv);
+                        });
+                    }
+                });
+                
+                shippingOptions.classList.remove('hidden');
+                sameCityMessage.classList.add('hidden');
+            }
+
+            function updateShippingCost(cost, courier, service) {
+                currentShippingCost = cost;
+                
+                if (cost > 0) {
+                    shippingCostAmount.textContent = `Rp${new Intl.NumberFormat('id-ID').format(cost)}`;
+                    shippingCostDisplay.classList.remove('hidden');
+                } else {
+                    shippingCostDisplay.classList.add('hidden');
+                }
+                
+                // Update final total
+                const newTotal = originalTotal + cost;
+                finalTotalDisplay.textContent = `Rp${new Intl.NumberFormat('id-ID').format(newTotal)}`;
+                
+                // Update hidden form fields
+                document.getElementById('checkout_shipping_cost').value = cost;
+                document.getElementById('checkout_shipping_courier').value = courier;
+                document.getElementById('checkout_shipping_service').value = service;
+                
+                // Update payment amount display
+                updatePaymentAmount();
+            }
+
+            function hideShippingElements() {
+                shippingOptions.classList.add('hidden');
+                shippingCostDisplay.classList.add('hidden');
+                sameCityMessage.classList.add('hidden');
+                currentShippingCost = 0;
+                finalTotalDisplay.textContent = `Rp${new Intl.NumberFormat('id-ID').format(originalTotal)}`;
+                updatePaymentAmount();
+            }
+
+            function updatePaymentAmount() {
+                const dpCheckbox = document.getElementById('is_down_payment');
+                const paymentAmount = document.getElementById('payment_amount');
+                const totalWithShipping = originalTotal + currentShippingCost;
+                
+                if (dpCheckbox && dpCheckbox.checked) {
+                    const dpAmount = Math.round(totalWithShipping * 0.5);
+                    paymentAmount.textContent = 'Rp' + new Intl.NumberFormat('id-ID').format(dpAmount);
+                } else {
+                    paymentAmount.textContent = 'Rp' + new Intl.NumberFormat('id-ID').format(totalWithShipping);
+                }
+                
+                // Update payment amount data attribute
+                paymentAmount.setAttribute('data-total', totalWithShipping);
+            }
         });
     </script>
 </body>

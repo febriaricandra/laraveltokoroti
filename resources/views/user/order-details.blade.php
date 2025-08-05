@@ -95,12 +95,39 @@
                     @elseif($order->status == 'delivered') text-green-600 font-semibold
                     @elseif($order->status == 'cancelled') text-red-600 font-semibold
                     @elseif($order->status == 'paid') text-green-600 font-semibold
+                    @elseif($order->status == 'dp_paid') text-blue-600 font-semibold
                     @endif
                 ">
-                    {{ ucfirst($order->status) }}
+                    @if($order->status == 'dp_paid')
+                        Down Payment Paid
+                    @else
+                        {{ ucfirst($order->status) }}
+                    @endif
                 </span>
             </p>
             <p><strong>Metode Pembayaran:</strong> {{ ucfirst($order->payment_method) }}</p>
+            @if($order->is_down_payment)
+                <div class="bg-blue-50 border border-blue-200 rounded p-3 mt-2">
+                    <p class="text-blue-800 font-semibold mb-1">
+                        <i class="fas fa-info-circle mr-1"></i> Down Payment Order
+                    </p>
+                    <p><strong>DP Amount:</strong> 
+                        <span class="text-green-600 font-semibold">
+                            Rp{{ number_format($order->down_payment_amount, 0, ',', '.') }}
+                        </span>
+                    </p>
+                    <p><strong>Sisa Pembayaran:</strong> 
+                        <span class="text-orange-600 font-semibold">
+                            Rp{{ number_format($order->remaining_amount, 0, ',', '.') }}
+                        </span>
+                    </p>
+                    @if($order->status == 'dp_paid')
+                        <p class="text-sm text-blue-600 mt-1">
+                            * Silakan selesaikan pembayaran sisa saat pengambilan/pengiriman
+                        </p>
+                    @endif
+                </div>
+            @endif
             <p><strong>Tanggal Order:</strong> {{ $order->created_at->format('d M Y H:i') }}</p>
             <p><strong>Bukti Pembayaran:</strong>
                 @if ($order->payment_proof)
@@ -112,6 +139,30 @@
                     <span class="text-gray-500 italic">Belum ada</span>
                 @endif
             </p>
+            
+            @if($order->tracking_number)
+                <p><strong>Nomor Resi:</strong> <span class="font-mono bg-gray-100 px-2 py-1 rounded">{{ $order->tracking_number }}</span></p>
+            @endif
+            
+            @if($order->delivery_proof)
+                <p><strong>Bukti Penerimaan:</strong>
+                    <a href="{{ asset('storage/' . $order->delivery_proof) }}" target="_blank"
+                        class="text-green-600 underline">
+                        <i class="fas fa-image mr-1"></i> Lihat Bukti
+                    </a>
+                    @if($order->delivered_at)
+                        <span class="text-sm text-gray-600 block mt-1">
+                            <i class="fas fa-clock mr-1"></i> Dikonfirmasi: {{ $order->delivered_at->format('d M Y H:i') }}
+                        </span>
+                    @endif
+                </p>
+            @elseif($order->isShipped())
+                <p><strong>Bukti Penerimaan:</strong>
+                    <span class="text-orange-600 italic">
+                        <i class="fas fa-truck mr-1"></i> Menunggu konfirmasi penerimaan barang
+                    </span>
+                </p>
+            @endif
         </div>
 
         <div class="overflow-x-auto">
@@ -182,6 +233,24 @@
                 <span class="text-2xl font-bold text-orange-700">Total Akhir:</span>
                 <span class="text-2xl font-extrabold text-orange-700">Rp{{ number_format($order->total_price, 0, ',', '.') }}</span>
             </div>
+            
+            @if($order->is_down_payment)
+                <div class="mt-4 pt-4 border-t border-gray-200">
+                    <div class="bg-gradient-to-r from-blue-50 to-green-50 p-4 rounded-lg">
+                        <h4 class="font-bold text-gray-800 mb-2">Rincian Pembayaran Down Payment:</h4>
+                        <div class="space-y-1">
+                            <div class="flex justify-between">
+                                <span class="text-green-700">✓ DP yang sudah dibayar:</span>
+                                <span class="font-semibold text-green-700">Rp{{ number_format($order->down_payment_amount, 0, ',', '.') }}</span>
+                            </div>
+                            <div class="flex justify-between">
+                                <span class="text-orange-700">○ Sisa yang harus dibayar:</span>
+                                <span class="font-semibold text-orange-700">Rp{{ number_format($order->remaining_amount, 0, ',', '.') }}</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            @endif
         </div>
         
         <div class="mt-6 flex flex-wrap gap-2">
@@ -193,6 +262,17 @@
                 class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg text-sm" target="_blank">
                 <i class="fas fa-download mr-1"></i> Unduh Invoice PDF
             </a>
+            
+            @if($order->canUploadDeliveryProof())
+                <a href="{{ route('user.order.upload-delivery-proof', $order->id) }}"
+                    class="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg text-sm">
+                    <i class="fas fa-upload mr-1"></i> Upload Bukti Penerimaan
+                </a>
+            @elseif($order->hasDeliveryProof())
+                <div class="flex items-center bg-green-100 text-green-800 px-4 py-2 rounded-lg text-sm">
+                    <i class="fas fa-check-circle mr-1"></i> Bukti penerimaan sudah diupload
+                </div>
+            @endif
         </div>
     </div>
 

@@ -98,6 +98,7 @@
                             <th class="text-left px-6 py-3">Total Akhir</th>
                             <th class="text-left px-6 py-3">Metode Pembayaran</th>
                             <th class="text-left px-6 py-3">Status</th>
+                            <th class="text-left px-6 py-3">Down Payment</th>
                             <th class="text-left px-6 py-3">Bukti Pembayaran</th>
                             <th class="text-left px-6 py-3">Tanggal</th>
                             <th class="text-left px-6 py-3"></th>
@@ -132,7 +133,52 @@
                                     Rp{{ number_format($order->total_price, 0, ',', '.') }}
                                 </td>
                                 <td class="px-6 py-4 capitalize">{{ ucfirst($order->payment_method) }}</td>
-                                <td class="px-6 py-4 capitalize">{{ $order->status }}</td>
+                                <td class="px-6 py-4 capitalize">
+                                    <span class="
+                                        @if($order->status == 'pending') text-yellow-600 font-semibold
+                                        @elseif($order->status == 'processing') text-blue-600 font-semibold
+                                        @elseif($order->status == 'shipped') text-orange-600 font-semibold
+                                        @elseif($order->status == 'delivered') text-green-600 font-semibold
+                                        @elseif($order->status == 'completed') text-emerald-600 font-semibold
+                                        @elseif($order->status == 'cancelled') text-red-600 font-semibold
+                                        @elseif($order->status == 'paid') text-green-600 font-semibold
+                                        @elseif($order->status == 'dp_paid') text-blue-600 font-semibold
+                                        @elseif($order->status == 'confirmed') text-indigo-600 font-semibold
+                                        @endif
+                                    ">
+                                        @if($order->status == 'dp_paid')
+                                            DP Paid
+                                        @else
+                                            {{ ucfirst($order->status) }}
+                                        @endif
+                                    </span>
+                                    
+                                    @if($order->tracking_number && $order->status == 'shipped')
+                                        <div class="text-xs text-gray-600 mt-1">
+                                            <i class="fas fa-truck mr-1"></i>Resi: {{ $order->tracking_number }}
+                                        </div>
+                                    @endif
+                                    
+                                    @if($order->canUploadDeliveryProof())
+                                        <div class="text-xs text-orange-600 mt-1">
+                                            <i class="fas fa-exclamation-circle mr-1"></i>Menunggu konfirmasi
+                                        </div>
+                                    @elseif($order->hasDeliveryProof())
+                                        <div class="text-xs text-green-600 mt-1">
+                                            <i class="fas fa-check-circle mr-1"></i>Sudah dikonfirmasi
+                                        </div>
+                                    @endif
+                                </td>
+                                <td class="px-6 py-4">
+                                    @if($order->is_down_payment)
+                                        <div class="text-sm">
+                                            <span class="text-green-600 font-semibold">DP: Rp{{ number_format($order->down_payment_amount, 0, ',', '.') }}</span><br>
+                                            <span class="text-orange-600">Sisa: Rp{{ number_format($order->remaining_amount, 0, ',', '.') }}</span>
+                                        </div>
+                                    @else
+                                        <span class="text-gray-500">-</span>
+                                    @endif
+                                </td>
                                 <td class="px-6 py-4">
                                     @if ($order->payment_proof)
                                         <a href="{{ asset('storage/' . $order->payment_proof) }}" target="_blank"
@@ -150,6 +196,13 @@
                                             class="bg-orange-500 hover:bg-orange-600 text-white px-4 py-2 rounded-lg text-sm text-center w-full sm:w-auto">
                                             Lihat Detail
                                         </a>
+                                        
+                                        @if($order->canUploadDeliveryProof())
+                                            <a href="{{ route('user.order.upload-delivery-proof', $order->id) }}"
+                                                class="bg-green-500 hover:bg-green-600 text-white px-4 py-2 rounded-lg text-sm text-center w-full sm:w-auto">
+                                                <i class="fas fa-upload mr-1"></i>Upload Bukti
+                                            </a>
+                                        @endif
                                     </div>
                                 </td>
                             </tr>

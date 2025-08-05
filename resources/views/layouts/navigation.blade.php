@@ -37,6 +37,10 @@
                         {{ __('Banner') }}
                     </x-nav-link>
                     
+                    <x-nav-link :href="route('admin.settings.index')" :active="request()->routeIs('admin.settings.*')" class="text-white hover:text-orange-100">
+                        {{ __('Settings') }}
+                    </x-nav-link>
+                    
                     <x-nav-link :href="route('admin.notifications.index')" :active="request()->routeIs('admin.notifications.*')" class="text-white hover:text-orange-100">
                         {{ __('Notification') }}
                         @if (Auth::user()->unreadNotifications->count() > 0)
@@ -119,6 +123,9 @@
             </x-responsive-nav-link>
             <x-responsive-nav-link :href="route('admin.contact.index')" :active="request()->routeIs('admin.contact.*')" class="text-white hover:bg-orange-600">
                 {{ __('Pesan Kontak') }}
+            </x-responsive-nav-link>
+            <x-responsive-nav-link :href="route('admin.settings.index')" :active="request()->routeIs('admin.settings.*')" class="text-white hover:bg-orange-600">
+                {{ __('Settings') }}
             </x-responsive-nav-link>
         </div>
 

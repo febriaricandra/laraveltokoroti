@@ -14,6 +14,7 @@ use App\Http\Controllers\Admin\DiscountController;
 use App\Http\Controllers\Admin\BannerController;
 use App\Http\Controllers\InvoiceController;
 use App\Http\Controllers\Admin\NotificationController;
+use App\Http\Controllers\Admin\SettingController;
 
 // Public routes
 Route::get('/', [UserProductController::class, 'index'])->name('user.products');
@@ -28,6 +29,8 @@ Route::get('/cart', [UserCartController::class, 'index'])->name('cart.index');
 Route::put('/cart/update/{id}', [UserCartController::class, 'update'])->name('cart.update');
 Route::delete('/cart/{id}', [UserCartController::class, 'destroy'])->name('cart.destroy');
 Route::post('/checkout', [UserCartController::class, 'checkout'])->name('cart.checkout');
+Route::get('/cart/cities/{provinceId}', [UserCartController::class, 'getCities'])->name('cart.cities');
+Route::post('/cart/shipping-cost', [UserCartController::class, 'getShippingCost'])->name('cart.shipping-cost');
 Route::get('/order', [UserOrderController::class, 'order'])->name('user.order')->middleware('auth');
 Route::get('/order/{id}', [UserOrderController::class, 'show'])->name('user.order.details');
 
@@ -59,6 +62,10 @@ Route::middleware('auth')->group(function () {
     // Order routes (harus login)
     Route::get('/order', [UserOrderController::class, 'order'])->name('user.order');
     Route::get('/order/{id}', [UserOrderController::class, 'show'])->name('user.order.details');
+    
+    // Delivery proof routes
+    Route::get('/order/{id}/upload-delivery-proof', [UserOrderController::class, 'showDeliveryProofForm'])->name('user.order.upload-delivery-proof');
+    Route::post('/order/{id}/upload-delivery-proof', [UserOrderController::class, 'uploadDeliveryProof'])->name('user.order.upload-delivery-proof.store');
 });
 
 // Admin routes
@@ -86,6 +93,12 @@ Route::middleware(['auth', 'admin'])->prefix('admin')->name('admin.')->group(fun
     Route::post('/notifications/mark-all-read', [NotificationController::class, 'markAllAsRead'])->name('notifications.mark-all-read');
     Route::get('/notifications/unread-count', [NotificationController::class, 'getUnreadCount'])->name('notifications.unread-count');
     Route::get('/notifications/latest', [NotificationController::class, 'getLatestNotifications'])->name('notifications.latest');
+
+    // Settings routes
+    Route::get('/settings', [SettingController::class, 'index'])->name('settings.index');
+    Route::post('/settings', [SettingController::class, 'store'])->name('settings.store');
+    Route::get('/settings/provinces', [SettingController::class, 'getProvinces'])->name('settings.provinces');
+    Route::get('/settings/cities/{provinceId}', [SettingController::class, 'getCities'])->name('settings.cities');
 });
 
 // Dashboard route (redirect based on role)
