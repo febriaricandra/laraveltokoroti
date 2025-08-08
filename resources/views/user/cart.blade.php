@@ -337,7 +337,7 @@
                                 <input type="radio" id="cash" name="payment_method" value="cash"
                                     class="mr-2 text-orange-500 focus:ring-orange-500"
                                     onchange="togglePaymentProof()">
-                                <label for="cash" class="text-gray-700">Cash (Bayar di Tempat)</label>
+                                <label for="cash" class="text-gray-700">Cash (Bayar Langsung di Toko)</label>
                             </div>
                             <div class="flex items-center">
                                 <input type="radio" id="transfer" name="payment_method" value="transfer" checked
@@ -355,7 +355,7 @@
                                     class="mr-2 text-orange-500 focus:ring-orange-500"
                                     onchange="toggleDownPayment()">
                                 <label for="is_down_payment" class="text-gray-700 font-semibold">
-                                    Bayar Down Payment (DP) 50%
+                                    Bayar Down Payment (DP) 50% - Tersedia untuk semua metode pembayaran
                                 </label>
                             </div>
                             <div id="dp_info" class="mt-2 text-sm text-gray-600 hidden">
@@ -371,6 +371,9 @@
                                     * Dengan memilih DP, Anda hanya perlu membayar 50% dari total belanja terlebih dahulu. 
                                     Sisa pembayaran dapat dilakukan saat pengambilan/pengiriman.
                                 </p>
+                                <p id="cash_dp_note" class="text-xs text-blue-600 mt-1 hidden">
+                                    ** Untuk pembayaran cash, DP dan sisa pembayaran dilakukan langsung di toko saat pengambilan barang.
+                                </p>
                             </div>
                         </div>
                     </div>
@@ -380,7 +383,12 @@
                             Pembayaran</label>
                         <input type="file" name="payment_proof" id="payment_proof" accept="image/*"
                             class="w-full mt-1 p-2 border border-gray-300 rounded bg-white focus:outline-none focus:ring focus:border-orange-500">
-                        <p class="text-sm text-gray-500 mt-1">Transfer ke: BCA 1234567890 a.n Toko Roti</p>
+                        <p class="text-sm text-gray-500 mt-1">
+                            <span id="transfer_bank_info">Transfer ke: BCA 1234567890 a.n Toko Roti</span>
+                        </p>
+                        <p id="cash_payment_info" class="text-sm text-blue-600 mt-1 hidden">
+                            * Pembayaran cash dilakukan langsung di toko saat pengambilan barang.
+                        </p>
                     </div>
 
                     <div class="flex justify-between items-center pt-4 border-t">
@@ -427,21 +435,27 @@
             const paymentProofSection = document.getElementById('payment_proof_section');
             const paymentProofInput = document.getElementById('payment_proof');
             const downPaymentSection = document.getElementById('down_payment_section');
+            const cashPaymentInfo = document.getElementById('cash_payment_info');
+            const transferBankInfo = document.getElementById('transfer_bank_info');
 
             if (cashRadio.checked) {
+                // For cash payment, never show payment proof section
                 paymentProofSection.style.display = 'none';
                 paymentProofInput.removeAttribute('required');
-                downPaymentSection.style.display = 'none';
-                
-                // Reset down payment checkbox when cash is selected
-                const dpCheckbox = document.getElementById('is_down_payment');
-                dpCheckbox.checked = false;
-                toggleDownPayment();
+                if (cashPaymentInfo) cashPaymentInfo.classList.add('hidden');
+                if (transferBankInfo) transferBankInfo.classList.add('hidden');
+                // Keep down payment section visible for cash payment
+                downPaymentSection.style.display = 'block';
             } else if (transferRadio.checked) {
                 paymentProofSection.style.display = 'block';
                 paymentProofInput.setAttribute('required', 'required');
                 downPaymentSection.style.display = 'block';
+                if (cashPaymentInfo) cashPaymentInfo.classList.add('hidden');
+                if (transferBankInfo) transferBankInfo.classList.remove('hidden');
             }
+            
+            // Update down payment display when payment method changes
+            toggleDownPayment();
         }
         
         function toggleDownPayment() {
@@ -449,6 +463,8 @@
             const dpInfo = document.getElementById('dp_info');
             const paymentLabel = document.getElementById('payment_label');
             const paymentAmount = document.getElementById('payment_amount');
+            const cashDpNote = document.getElementById('cash_dp_note');
+            const cashRadio = document.getElementById('cash');
             
             // Ambil nilai dari data attribute yang sudah disiapkan
             const finalTotal = parseInt(paymentAmount.getAttribute('data-total'));
@@ -458,11 +474,22 @@
                 dpInfo.classList.remove('hidden');
                 paymentLabel.textContent = 'Down Payment yang harus dibayar:';
                 paymentAmount.textContent = 'Rp' + new Intl.NumberFormat('id-ID').format(dpAmount);
+                
+                // Show cash-specific note if cash payment is selected
+                if (cashRadio && cashRadio.checked) {
+                    cashDpNote.classList.remove('hidden');
+                } else {
+                    cashDpNote.classList.add('hidden');
+                }
             } else {
                 dpInfo.classList.add('hidden');
+                cashDpNote.classList.add('hidden');
                 paymentLabel.textContent = 'Total yang harus dibayar:';
                 paymentAmount.textContent = 'Rp' + new Intl.NumberFormat('id-ID').format(finalTotal);
             }
+            
+            // Cash payment never shows payment proof section regardless of DP
+            // No additional logic needed for cash payment proof
         }
         
         function decrementQuantity(button) {
